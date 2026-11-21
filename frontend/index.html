@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#102a24" />
   <title>NammaResolve — Bengaluru, heard.</title>
   <link rel="stylesheet" href="/static/styles.css" />
-  <script src="https://cdn.jsdelivr.net/npm/agora-rtc-sdk-ng@4.24.10/AgoraRTC_N.js"></script>
+  <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.24.0.js"></script>
 </head>
 <body>
   <header class="topbar">
@@ -25,10 +25,17 @@
       </div>
 
       <section class="voice-card" aria-labelledby="voice-title">
-        <div class="card-topline"><span class="live-pill"><span class="live-dot"></span> LIVE ASSISTANT</span><span class="language-tag">English · Kannada soon</span></div>
+        <div class="card-topline"><span class="live-pill"><span class="live-dot"></span> LIVE ASSISTANT</span></div>
+        <div class="language-toggle" role="radiogroup" aria-label="Conversation language">
+          <button type="button" class="language-option active" data-language="en-US" role="radio" aria-checked="true">English</button>
+          <button type="button" class="language-option" data-language="kn-IN" role="radio" aria-checked="false">ಕನ್ನಡ</button>
+        </div>
         <div class="voice-orb-wrap"><div class="voice-orb-ring"></div><button id="voiceButton" class="voice-orb" aria-label="Start voice assistant"><span class="mic-icon">🎙</span></button></div>
         <h2 id="voice-title">Talk to Namma</h2>
         <p id="voiceStatus" class="voice-status">Tap the microphone and tell us what's happening.</p>
+        <div id="liveCaptions" class="live-captions" aria-live="polite" aria-label="Live conversation captions">
+          <p class="caption-placeholder">Captions will appear here during the conversation.</p>
+        </div>
         <button id="voiceAction" class="primary-button">Start a conversation <span>↗</span></button>
         <p class="voice-footnote">Your microphone is used only after you start a session.</p>
       </section>
@@ -79,12 +86,24 @@
       </section>
     </section>
 
+    <section class="panel poc-panel" id="pocDirectory">
+      <div class="panel-heading"><div><div class="section-kicker">DIRECTORY</div><h2>Local representative contacts</h2></div></div>
+      <p class="panel-subtitle">Example areas, MLA placeholders and placeholders for the email demo. These addresses are not real.</p>
+      <div id="pocList" class="poc-list"><div class="empty-state">Loading...</div></div>
+    </section>
+
     <section class="how-it-works">
       <div><div class="section-kicker">FROM CONVERSATION TO ACTION</div><h2>Not just heard.<br /><em>Actually followed up.</em></h2></div>
       <div class="flow-steps"><div class="flow-step"><b>01</b><span>Tell us</span><p>Describe the issue by voice or text.</p></div><div class="flow-step"><b>02</b><span>We organise</span><p>Get a reference and bring reports together.</p></div><div class="flow-step"><b>03</b><span>Track it</span><p>Follow progress and keep the community informed.</p></div></div>
     </section>
   </main>
 
+  <div id="reportModal" class="report-modal" hidden>
+    <div class="report-modal-backdrop"></div>
+    <section class="report-modal-card" role="dialog" aria-modal="true" aria-labelledby="reportModalContent">
+      <div id="reportModalContent"></div>
+    </section>
+  </div>
   <footer><span class="brand"><span class="brand-mark">ನ</span> NammaResolve</span><span>Built with care for Bengaluru.</span></footer>
   <script src="/static/app.js"></script>
 </body>

@@ -51,7 +51,7 @@ Fill the values in `.env`:
 | `TOOL_API_KEY` | Generate a long random secret for securing the tool endpoints |
 | `PUBLIC_BASE_URL` | Public HTTPS URL that reaches this FastAPI app |
 
-The starter uses Agora-managed LLM/STT configuration in the Agent SDK example path. You can switch to BYOK providers later. The initial conversation language is English (`en-US`); Kannada and other Indian-language support should be added as a separate iteration after validating Agora/Murf voice and STT combinations.
+The starter uses Agora-managed LLM/STT configuration in the Agent SDK example path. You can switch to BYOK providers later. Set `AGORA_LANGUAGE=en-US` for English, `AGORA_LANGUAGE=kn-IN` for Kannada STT and output, or `AGORA_LANGUAGE=bilingual` to let the agent match the resident's language. Murf supports `MURF_VOICE_ID`, `MURF_LOCALE`, and `MURF_MODEL`; this project's Kannada configuration uses Harman with locale `kn-IN` and model `FALCON`. The Murf dashboard style `Conversation` is recorded in `MURF_STYLE`, but style is not an Agora Murf SDK constructor field in the installed package. Restart the server after changes.
 
 ## 3. Start the website
 

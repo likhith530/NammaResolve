@@ -15,10 +15,13 @@ class Settings(BaseSettings):
     agora_area: str = "US"
     agora_llm_model: str = "gpt-4o-mini"
     agora_stt_model: str = "nova-3"
+    agora_language: str = "en-US"
 
     murf_api_key: SecretStr = SecretStr("")
     murf_voice_id: str = "Matthew"
     murf_locale: str = "en-US"
+    murf_model: str = "FALCON"
+    murf_style: str = "Conversation"
     murf_base_url: str = "wss://global.api.murf.ai/v1/speech/stream-input"
 
     public_base_url: str = ""

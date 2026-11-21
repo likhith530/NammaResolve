@@ -7,15 +7,20 @@ from backend.app.config import get_settings
 
 SYSTEM_PROMPT = """
 You are NammaResolve, a helpful civic issue reporting assistant for Bengaluru residents.
-Speak in a warm, concise, respectful way. The user may speak English; ask one clear question
-at a time. Help residents report garbage collection, potholes, broken streetlights, drainage,
+Speak in a warm, concise, respectful way. For kn-IN sessions, speak naturally in Kannada and keep
+all questions, confirmations and acknowledgements in Kannada. For en-US sessions, speak English
+and keep all questions, confirmations and acknowledgements in English. Ask one clear question at a time. Help residents report garbage collection, potholes, broken streetlights, drainage,
 water leakage and other local civic problems.
 
 To create a complaint, collect and confirm: category, a clear description, area/locality, and
-an optional landmark. Do not create a complaint until the resident has explicitly confirmed
-that the details are correct. Then call createCivicComplaint. Read the returned NammaResolve
-reference ID and clearly explain that this is an internal NammaResolve tracking reference, not
-an official BBMP ticket or government acknowledgement.
+an optional landmark. After the resident gives information, briefly acknowledge it aloud with
+phrases such as "I have noted that" or "Thank you, I understand." Before creating the report,
+repeat the confirmed details and ask the resident to say "yes" or "confirm." Do not create a
+complaint until the resident explicitly confirms that the details are correct. Then call
+createCivicComplaint. Once the tool succeeds, immediately acknowledge it aloud before reading
+anything else: "Thank you. I have saved your complaint." Read the returned NammaResolve
+reference ID slowly, spell it clearly if needed, and explain that it is an internal tracking
+reference, not an official BBMP ticket or government acknowledgement.
 
 When a resident asks about an existing report, ask for its NammaResolve reference ID and call
 getComplaintStatus. Never invent complaint IDs, official ticket numbers, government actions,
@@ -104,9 +109,11 @@ _active_sessions: dict[str, object] = {}
 _sessions_lock = RLock()
 
 
-def start_voice_session() -> StartedVoiceSession:
+def start_voice_session(language: str = "kn-IN") -> StartedVoiceSession:
     # Keep the civic form/API usable even before voice SDK dependencies are installed.
     from agora_agent import Agent, Agora, Area, DeepgramSTT, OpenAI
+    from agora_agent.agentkit import AdvancedFeatures
+    from agora_agent.agentkit.token import generate_client_token
     from agora_agent.agentkit.vendors import MurfTTS
     from agora_token_builder import RtcTokenBuilder
 
@@ -128,8 +135,27 @@ def start_voice_session() -> StartedVoiceSession:
         )
     if settings.tool_secret == "replace-with-a-long-random-secret":
         raise RuntimeError("Set TOOL_API_KEY to a unique random secret before starting voice sessions.")
+    
+    area_map = {
+    "US": Area.US,
+    "EU": Area.EU,
+    "AP": Area.AP,
+    "CN": Area.CN,
+    }
 
-    agora_area = Area.US if settings.agora_area.upper() == "US" else Area.US
+    area_name = settings.agora_area.upper()
+    if area_name not in area_map:
+        raise RuntimeError(f"Unsupported AGORA_AREA: {area_name}")
+
+    agora_area = area_map[area_name]
+
+    language = language.strip()
+    if language not in {"en-US", "kn-IN"}:
+        raise RuntimeError("Voice language must be en-US or kn-IN")
+
+    stt_language = language
+    murf_locale = "kn-IN" if language == "kn-IN" else "en-IN"
+
     client = Agora(
         area=agora_area,
         app_id=settings.agora_app_id,
@@ -138,14 +164,22 @@ def start_voice_session() -> StartedVoiceSession:
 
     tool_definitions = _tool_definitions(base_url)
     agent = (
-        Agent(client=client, turn_detection={"language": "en-US"})
-        .with_stt(DeepgramSTT(model=settings.agora_stt_model, language="en"))
+        Agent(client=client, turn_detection={"language": stt_language})
+        .with_stt(DeepgramSTT(model=settings.agora_stt_model, language=stt_language))
         .with_llm(
             OpenAI(
                 model=settings.agora_llm_model,
                 system_messages=[{"role": "system", "content": SYSTEM_PROMPT}],
-                greeting_message="Hello! I'm NammaResolve. Tell me about the civic issue you're facing in Bengaluru.",
-                failure_message="Sorry, I'm having trouble right now. Please try again or use the report form.",
+                greeting_message=(
+                    "ನಮಸ್ಕಾರ! ನಾನು NammaResolve. ಬೆಂಗಳೂರು ನಗರದ ನಿಮ್ಮ nagara issue ಬಗ್ಗೆ ಹೇಳಿ."
+                    if language == "kn-IN"
+                    else "Namaskara! I'm NammaResolve. Tell me the civic issue you're facing in Bengaluru."
+                ),
+                failure_message=(
+                    "ಕ್ಷಮಿಸಿ, request ಪೂರ್ಣಗೊಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ ಅಥವಾ report form ಬಳಸಿ."
+                    if language == "kn-IN"
+                    else "Sorry, I could not complete that request. Please try again or use the report form."
+                ),
                 max_history=30,
                 tools=tool_definitions,
                 template_variables={"tool_api_key": f"Bearer {settings.tool_secret}"},
@@ -156,14 +190,15 @@ def start_voice_session() -> StartedVoiceSession:
                 key=settings.murf_secret,
                 voice_id=settings.murf_voice_id,
                 base_url=settings.murf_base_url,
-                locale=settings.murf_locale,
+                locale=(murf_locale),
                 rate=0,
                 pitch=0,
-                model="FALCON",
+                model=settings.murf_model,
                 sample_rate=24000,
             )
         )
         .with_tools(True)
+        .with_advanced_features(AdvancedFeatures(enable_rtm=True, enable_tools=True))
     )
 
     channel = f"nammaresolve-{secrets.token_hex(8)}"
@@ -181,13 +216,12 @@ def start_voice_session() -> StartedVoiceSession:
         _active_sessions[agent_session_id] = session
 
     expires_at = int(time.time()) + 3600
-    user_token = RtcTokenBuilder.buildTokenWithUid(
+    user_token = generate_client_token(
         settings.agora_app_id,
         settings.agora_certificate,
         channel,
         uid,
-        1,  # Publisher: the resident publishes microphone audio.
-        expires_at,
+        token_expire=3600,
     )
     return StartedVoiceSession(
         agent_session_id=agent_session_id,

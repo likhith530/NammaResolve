@@ -18,6 +18,8 @@ class ComplaintCreate(BaseModel):
     description: str = Field(min_length=10, max_length=1200)
     area: str = Field(min_length=2, max_length=120)
     landmark: str | None = Field(default=None, max_length=200)
+    voice_session_id: str | None = Field(default=None, max_length=200)
+    confirmation_status: str | None = Field(default=None, pattern="^(pending_confirmation|confirmed)$")
 
 
 class ComplaintStatusUpdate(BaseModel):
@@ -32,11 +34,16 @@ class ComplaintOut(BaseModel):
     landmark: str | None
     status: str
     created_at: datetime
+    voice_session_id: str | None = None
+    confirmation_status: str = "confirmed"
+    proof_filename: str | None = None
+    proof_content_type: str | None = None
+    proof_size: int | None = None
+    proof_url: str | None = None
 
 
 class VoiceSessionRequest(BaseModel):
-    # A numeric Agora UID is generated on the server if the client doesn't provide one.
-    pass
+    language: str = Field(default="kn-IN", pattern="^(en-US|kn-IN)$")
 
 
 class VoiceSessionOut(BaseModel):
@@ -46,3 +53,33 @@ class VoiceSessionOut(BaseModel):
     uid: int
     agent_session_id: str
     expires_at: int
+
+
+class TranscriptEntry(BaseModel):
+    speaker: str = Field(pattern="^(resident|agent|system)$")
+    text: str = Field(min_length=1, max_length=4000)
+    is_final: bool = True
+
+
+class POCInfo(BaseModel):
+    area: str
+    constituency: str
+    mla_name: str
+    mla_email: str
+    poc_name: str
+    poc_email: str
+    is_demo: bool = True
+
+
+class EmailPreview(BaseModel):
+    complaint_id: str
+    to: list[str]
+    subject: str
+    body: str
+    sent: bool = False
+    is_demo: bool = True
+
+
+class TranscriptEntryOut(TranscriptEntry):
+    entry_id: int
+    timestamp: datetime
